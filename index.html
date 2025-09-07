@@ -63,22 +63,30 @@
 
     <!-- Language controls -->
     <div class="controls">
-      <label>
-        Target language (ISO code):
-        <input id="lang" placeholder="e.g., es, de, fr" />
-      </label>
-      <button id="saveLang">Save Language</button>
-      <span id="status"></span>
-    </div>
+  <label>
+    Target language (ISO code):
+    <input id="lang" placeholder="e.g., es, de, fr" />
+  </label>
+  <button id="saveLang">Save Language</button>
+  <span id="status"></span>
+</div>
 
-    <!-- ESP controls -->
-    <div class="esp-controls">
-      <label>
-        ESP IP:
-        <input id="espIP" placeholder="http://192.168.178.36" />
-      </label>
-      <button id="saveESP">Save ESP</button>
-      <button id="triggerRecord">🎤 Trigger Recording (via ESP)</button>
+<div class="controls">
+  <label>
+    ESP IP:
+    <input id="espInput" placeholder="http://192.168.xxx.xxx" />
+  </label>
+  <button id="saveEsp">Save ESP</button>
+  <span id="espStatus"></span>
+</div>
+
+<div class="guide">
+  <p>
+    Use the button on your ESP8266 (or the trigger below) to record and upload audio.
+  </p>
+</div>
+
+<button id="triggerRecord">🎤 Trigger Recording (via ESP)</button>
     </div>
 
     <!-- Live translations -->
