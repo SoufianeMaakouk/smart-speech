@@ -1,22 +1,31 @@
-### `frontend/index.html`
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ESP8266 Speech Translator</title>
-<link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ESP8266 Speech Translator</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-<div class="container">
-<h1>ESP8266 Speech Translator</h1>
+  <div class="container">
+    <h1>ESP8266 Speech Translator</h1>
 
+    <div class="controls">
+      <label>
+        Target language (ISO code):
+        <input id="lang" placeholder="e.g., es, de, fr" />
+      </label>
+      <button id="saveLang">Save Language</button>
+      <span id="status"></span>
+    </div>
 
-<div class="controls">
-<label>
-Target language (ISO code):
-<input id="lang" placeholder="e.g., es, de, fr" />
-</label>
-<button id="saveLang">Save Language</button>
-<span id="status"></span>
+    <div class="guide">
+      <p>Press the button on your ESP8266 to record and upload audio. Transcribed and translated text will appear below.</p>
+    </div>
+
+    <div id="messages" class="messages"></div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
