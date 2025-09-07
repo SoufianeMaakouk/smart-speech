@@ -9,17 +9,19 @@ const langInput = document.getElementById("lang");
 const saveLangBtn = document.getElementById("saveLang");
 const messagesDiv = document.getElementById("messages");
 
+// Check if frontend is local
 const isLocalFrontend =
   location.hostname === "localhost" ||
   location.hostname.startsWith("192.168.") ||
   location.protocol === "file:";
 
+// -------------------- Helpers --------------------
 function updateEspStatus(msg, ok = false) {
   espStatus.textContent = `ESP: ${ok ? "✅" : "❌"} ${msg}`;
   espStatus.className = ok ? "ok" : "error";
 }
 
-// Simple SSE listener for backend updates
+// Initialize SSE stream from backend
 function initStream() {
   const evtSource = new EventSource(`${backendURL}/api/stream`);
   evtSource.onmessage = (event) => {
@@ -30,9 +32,21 @@ function initStream() {
   };
 }
 
+// -------------------- ESP Handling --------------------
+async function testESP(url) {
+  try {
+    const res = await fetch(`${url}/record`, { method: "POST" });
+    if (res.ok) updateEspStatus("reachable and ready", true);
+    else updateEspStatus("reachable but trigger failed");
+  } catch (err) {
+    updateEspStatus("not reachable");
+  }
+}
+
 saveEspBtn.addEventListener("click", async () => {
   espURL = espInput.value.trim();
   if (!espURL) return;
+
   localStorage.setItem("espURL", espURL);
   updateEspStatus("saved, testing...", false);
 
@@ -42,14 +56,10 @@ saveEspBtn.addEventListener("click", async () => {
     return;
   }
 
-  try {
-    await fetch(`${espURL}/record`, { method: "POST" });
-    updateEspStatus("reachable and ready", true);
-  } catch (err) {
-    updateEspStatus("not reachable");
-  }
+  await testESP(espURL);
 });
 
+// -------------------- Trigger Recording --------------------
 triggerBtn.addEventListener("click", async () => {
   if (!espURL) {
     updateEspStatus("no ESP IP set");
@@ -57,29 +67,29 @@ triggerBtn.addEventListener("click", async () => {
   }
 
   try {
-    // Trigger ESP
+    // Trigger ESP to start recording
     const res = await fetch(`${espURL}/record`, { method: "POST" });
     if (res.ok) {
       updateEspStatus("ESP triggered", true);
 
-      // Simulate sending recorded audio to backend after 1 second
-      setTimeout(async () => {
-        const blob = new Blob(["dummy audio content"], { type: "audio/wav" });
-        const formData = new FormData();
-        formData.append("file", blob, "audio.wav");
-        formData.append("lang", langInput.value || "en");
+      // -------------------- Upload audio to backend --------------------
+      // Here we simulate real audio capture from ESP.
+      // Ideally, the ESP should POST actual recorded audio to backend
+      const formData = new FormData();
+      const blob = new Blob(["dummy audio content"], { type: "audio/wav" });
+      formData.append("file", blob, "audio.wav");
+      formData.append("lang", langInput.value || "en");
 
-        try {
-          const r = await fetch(`${backendURL}/api/transcribe`, {
-            method: "POST",
-            body: formData,
-          });
-          const data = await r.json();
-          console.log("Backend response:", data);
-        } catch (err) {
-          console.error("Backend transcription error:", err);
-        }
-      }, 1000);
+      try {
+        const r = await fetch(`${backendURL}/api/transcribe`, {
+          method: "POST",
+          body: formData,
+        });
+        const data = await r.json();
+        console.log("Backend response:", data);
+      } catch (err) {
+        console.error("Backend transcription error:", err);
+      }
 
     } else {
       updateEspStatus("ESP trigger failed");
@@ -89,6 +99,7 @@ triggerBtn.addEventListener("click", async () => {
   }
 });
 
+// -------------------- Language Handling --------------------
 saveLangBtn.addEventListener("click", async () => {
   const lang = langInput.value.trim();
   if (!lang) return;
@@ -113,6 +124,6 @@ saveLangBtn.addEventListener("click", async () => {
   }
 });
 
-// Initialize
+// -------------------- Initialize --------------------
 if (espURL) espInput.value = espURL;
 initStream();
