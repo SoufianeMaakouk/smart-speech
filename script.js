@@ -1,4 +1,4 @@
-const BACKEND_BASE = 'https://YOUR-RENDER-APP.onrender.com';
+const BACKEND_BASE = 'https://speech-project-backend.onrender.com';
 const AUTH_TOKEN = null; // optional
 
 function authHeaders() { return AUTH_TOKEN ? { 'Authorization': `Bearer ${AUTH_TOKEN}` } : {}; }
