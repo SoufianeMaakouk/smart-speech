@@ -20,7 +20,7 @@
     h1 {
       text-align: center;
     }
-    .controls {
+    .controls, .esp-controls {
       margin-bottom: 15px;
     }
     #status, #backendStatus, #espStatus {
@@ -61,6 +61,7 @@
       <span id="espStatus">ESP: not connected</span>
     </div>
 
+    <!-- Language controls -->
     <div class="controls">
       <label>
         Target language (ISO code):
@@ -70,14 +71,17 @@
       <span id="status"></span>
     </div>
 
-    <div class="guide">
-      <p>
-        Use the button on your ESP8266 (or the trigger below) to record and upload audio.<br/>
-        Transcribed and translated text will appear below.
-      </p>
+    <!-- ESP controls -->
+    <div class="esp-controls">
+      <label>
+        ESP IP:
+        <input id="espIP" placeholder="http://192.168.x.x" />
+      </label>
+      <button id="saveESP">Save ESP</button>
       <button id="triggerRecord">🎤 Trigger Recording (via ESP)</button>
     </div>
 
+    <!-- Live translations -->
     <div id="messages" class="messages"></div>
   </div>
 
