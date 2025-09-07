@@ -37,26 +37,53 @@ function updateEspStatus(msg, ok = false) {
   espStatus.className = ok ? "ok" : "error";
 }
 
-saveEspBtn.addEventListener("click", () => {
-  espURL = espInput.value.trim();
-  if (espURL) {
-    localStorage.setItem("espURL", espURL);
-    updateEspStatus("saved at " + espURL, true);
+// Test ESP connectivity
+async function testESP(url) {
+  try {
+    const res = await fetch(`${url}/record`, { method: "POST" });
+    if (res.ok) {
+      updateEspStatus("reachable and ready", true);
+    } else {
+      updateEspStatus("reachable but trigger failed");
+    }
+  } catch (err) {
+    updateEspStatus("not reachable");
   }
+}
+
+saveEspBtn.addEventListener("click", async () => {
+  espURL = espInput.value.trim();
+  if (!espURL) {
+    updateEspStatus("no URL entered");
+    return;
+  }
+
+  localStorage.setItem("espURL", espURL);
+  updateEspStatus("saved, testing...", false);
+
+  // Test connectivity immediately
+  const isPublicESP = espURL.startsWith("http://") || espURL.startsWith("https://");
+  if (!isLocalFrontend && !isPublicESP) {
+    updateEspStatus(
+      "unreachable from GitHub Pages. Please run locally or use a public URL."
+    );
+    return;
+  }
+
+  await testESP(espURL);
 });
 
 triggerBtn.addEventListener("click", async () => {
   if (!espURL) {
-    updateEspStatus("no IP set");
+    updateEspStatus("no ESP IP set");
     return;
   }
 
-  // Allow public URLs (ngrok) even if frontend is not local
   const isPublicESP = espURL.startsWith("http://") || espURL.startsWith("https://");
 
   if (!isLocalFrontend && !isPublicESP) {
     updateEspStatus(
-      "unreachable from GitHub Pages. Please run locally or use a public URL."
+      "ESP unreachable from GitHub Pages. Please run locally or use a public URL."
     );
     return;
   }
@@ -100,7 +127,8 @@ saveLangBtn.addEventListener("click", async () => {
 
 // ========== Init ==========
 checkBackend();
-if (espURL) espInput.value = espURL;
-if (!isLocalFrontend && !espURL.startsWith("http")) {
-  updateEspStatus("⚠️ Only works from local network", false);
+if (espURL) {
+  espInput.value = espURL;
+  // Test ESP automatically on page load
+  testESP(espURL);
 }
