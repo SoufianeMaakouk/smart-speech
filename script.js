@@ -7,70 +7,47 @@ const saveEspBtn = document.getElementById("saveEsp");
 const triggerBtn = document.getElementById("triggerRecord");
 const langInput = document.getElementById("lang");
 const saveLangBtn = document.getElementById("saveLang");
+const messagesDiv = document.getElementById("messages");
 
-// Detect if frontend is local
 const isLocalFrontend =
   location.hostname === "localhost" ||
   location.hostname.startsWith("192.168.") ||
   location.protocol === "file:";
 
-// ========== Backend check ==========
-async function checkBackend() {
-  try {
-    const res = await fetch(`${backendURL}/`);
-    if (res.ok) {
-      backendStatus.textContent = "Backend: ✅ connected";
-      backendStatus.className = "ok";
-    } else {
-      backendStatus.textContent = "Backend: ❌ error";
-      backendStatus.className = "error";
-    }
-  } catch (_) {
-    backendStatus.textContent = "Backend: ❌ not reachable";
-    backendStatus.className = "error";
-  }
-}
-
-// ========== ESP Handling ==========
 function updateEspStatus(msg, ok = false) {
   espStatus.textContent = `ESP: ${ok ? "✅" : "❌"} ${msg}`;
   espStatus.className = ok ? "ok" : "error";
 }
 
-// Test ESP connectivity
-async function testESP(url) {
-  try {
-    const res = await fetch(`${url}/record`, { method: "POST" });
-    if (res.ok) {
-      updateEspStatus("reachable and ready", true);
-    } else {
-      updateEspStatus("reachable but trigger failed");
-    }
-  } catch (err) {
-    updateEspStatus("not reachable");
-  }
+// Simple SSE listener for backend updates
+function initStream() {
+  const evtSource = new EventSource(`${backendURL}/api/stream`);
+  evtSource.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    const el = document.createElement("div");
+    el.textContent = `Original: ${msg.original} | Translated (${msg.targetLanguage}): ${msg.translated}`;
+    messagesDiv.appendChild(el);
+  };
 }
 
 saveEspBtn.addEventListener("click", async () => {
   espURL = espInput.value.trim();
-  if (!espURL) {
-    updateEspStatus("no URL entered");
-    return;
-  }
-
+  if (!espURL) return;
   localStorage.setItem("espURL", espURL);
   updateEspStatus("saved, testing...", false);
 
-  // Test connectivity immediately
   const isPublicESP = espURL.startsWith("http://") || espURL.startsWith("https://");
   if (!isLocalFrontend && !isPublicESP) {
-    updateEspStatus(
-      "unreachable from GitHub Pages. Please run locally or use a public URL."
-    );
+    updateEspStatus("unreachable from GitHub Pages. Use public URL.", false);
     return;
   }
 
-  await testESP(espURL);
+  try {
+    await fetch(`${espURL}/record`, { method: "POST" });
+    updateEspStatus("reachable and ready", true);
+  } catch (err) {
+    updateEspStatus("not reachable");
+  }
 });
 
 triggerBtn.addEventListener("click", async () => {
@@ -79,28 +56,39 @@ triggerBtn.addEventListener("click", async () => {
     return;
   }
 
-  const isPublicESP = espURL.startsWith("http://") || espURL.startsWith("https://");
-
-  if (!isLocalFrontend && !isPublicESP) {
-    updateEspStatus(
-      "ESP unreachable from GitHub Pages. Please run locally or use a public URL."
-    );
-    return;
-  }
-
   try {
+    // Trigger ESP
     const res = await fetch(`${espURL}/record`, { method: "POST" });
     if (res.ok) {
-      updateEspStatus("recording triggered", true);
+      updateEspStatus("ESP triggered", true);
+
+      // Simulate sending recorded audio to backend after 1 second
+      setTimeout(async () => {
+        const blob = new Blob(["dummy audio content"], { type: "audio/wav" });
+        const formData = new FormData();
+        formData.append("file", blob, "audio.wav");
+        formData.append("lang", langInput.value || "en");
+
+        try {
+          const r = await fetch(`${backendURL}/api/transcribe`, {
+            method: "POST",
+            body: formData,
+          });
+          const data = await r.json();
+          console.log("Backend response:", data);
+        } catch (err) {
+          console.error("Backend transcription error:", err);
+        }
+      }, 1000);
+
     } else {
-      updateEspStatus("trigger failed");
+      updateEspStatus("ESP trigger failed");
     }
   } catch (err) {
-    updateEspStatus("not reachable");
+    updateEspStatus("ESP not reachable");
   }
 });
 
-// ========== Language Handling ==========
 saveLangBtn.addEventListener("click", async () => {
   const lang = langInput.value.trim();
   if (!lang) return;
@@ -125,10 +113,6 @@ saveLangBtn.addEventListener("click", async () => {
   }
 });
 
-// ========== Init ==========
-checkBackend();
-if (espURL) {
-  espInput.value = espURL;
-  // Test ESP automatically on page load
-  testESP(espURL);
-}
+// Initialize
+if (espURL) espInput.value = espURL;
+initStream();
