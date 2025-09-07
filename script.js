@@ -49,10 +49,13 @@ triggerBtn.addEventListener("click", async () => {
     return;
   }
 
-  if (!isLocalFrontend) {
-    updateEspStatus("unreachable from GitHub Pages. Please run locally.");
-    return;
-  }
+  // Allow ngrok/public URLs even if not local
+const isPublicESP = espURL.startsWith("http://") || espURL.startsWith("https://");
+
+if (!isLocalFrontend && !isPublicESP) {
+  updateEspStatus("ESP unreachable from GitHub Pages. Please run locally or use a public URL.");
+  return;
+}
 
   try {
     const res = await fetch(`${espURL}/record`, { method: "POST" });
