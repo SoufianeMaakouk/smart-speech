@@ -1,19 +1,18 @@
-const backendURL = "https://speech-project-backend.onrender.com"; // Render backend
-
-const langInput = document.getElementById("lang");
-const saveBtn = document.getElementById("saveLang");
-const statusEl = document.getElementById("status");
-const messagesEl = document.getElementById("messages");
-
-const backendStatus = document.getElementById("backendStatus");
+const backendURL = "https://speech-project-backend.onrender.com"; // your backend
+let espURL = localStorage.getItem("espURL") || "";
+const backendStatus = document.getElementById("status");
 const espStatus = document.getElementById("espStatus");
-const espIPInput = document.getElementById("espIP");
-const saveESPBtn = document.getElementById("saveESP");
+const espInput = document.getElementById("espInput");
+const saveEspBtn = document.getElementById("saveEsp");
 const triggerBtn = document.getElementById("triggerRecord");
 
-let espURL = null;
+// Detect if frontend is running locally or on GitHub Pages
+const isLocalFrontend =
+  location.hostname === "localhost" ||
+  location.hostname.startsWith("192.168.") ||
+  location.protocol === "file:";
 
-// Check backend connectivity
+// ========== Backend check ==========
 async function checkBackend() {
   try {
     const res = await fetch(`${backendURL}/`);
@@ -24,117 +23,52 @@ async function checkBackend() {
       backendStatus.textContent = "Backend: ❌ error";
       backendStatus.className = "error";
     }
-  } catch (err) {
+  } catch (_) {
     backendStatus.textContent = "Backend: ❌ not reachable";
     backendStatus.className = "error";
   }
 }
 
-// Load current target language
-async function loadLanguage() {
-  try {
-    const res = await fetch(`${backendURL}/api/get-language`);
-    const data = await res.json();
-    langInput.value = data.targetLanguage || "";
-    statusEl.textContent = `Current target language: ${data.targetLanguage}`;
-    statusEl.className = "ok";
-  } catch (err) {
-    statusEl.textContent = "Error loading current language";
-    statusEl.className = "error";
-  }
+// ========== ESP Handling ==========
+function updateEspStatus(msg, ok = false) {
+  espStatus.textContent = `ESP: ${ok ? "✅" : "❌"} ${msg}`;
+  espStatus.className = ok ? "ok" : "error";
 }
 
-// Save target language
-saveBtn.addEventListener("click", async () => {
-  const lang = langInput.value.trim();
-  if (!lang) {
-    statusEl.textContent = "Please enter a language code (e.g., de, fr, es)";
-    statusEl.className = "error";
-    return;
-  }
-
-  try {
-    const res = await fetch(`${backendURL}/api/set-language`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lang }),
-    });
-
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    statusEl.textContent = `Saved! Target language is now: ${data.targetLanguage}`;
-    statusEl.className = "ok";
-  } catch (err) {
-    statusEl.textContent = `Failed to save language: ${err.message}`;
-    statusEl.className = "error";
+saveEspBtn.addEventListener("click", () => {
+  espURL = espInput.value.trim();
+  if (espURL) {
+    localStorage.setItem("espURL", espURL);
+    updateEspStatus("saved at " + espURL, true);
   }
 });
 
-// ESP IP saving
-saveESPBtn.addEventListener("click", () => {
-  const ip = espIPInput.value.trim();
-  if (!ip.startsWith("http")) {
-    espStatus.textContent = "ESP: ❌ invalid IP";
-    espStatus.className = "error";
-    return;
-  }
-  espURL = ip;
-  espStatus.textContent = `ESP: set to ${espURL}`;
-  espStatus.className = "ok";
-});
-
-// Trigger ESP recording
 triggerBtn.addEventListener("click", async () => {
   if (!espURL) {
-    espStatus.textContent = "ESP: ❌ no IP set";
-    espStatus.className = "error";
+    updateEspStatus("no IP set");
     return;
   }
+
+  if (!isLocalFrontend) {
+    updateEspStatus("unreachable from GitHub Pages. Please run locally.");
+    return;
+  }
+
   try {
     const res = await fetch(`${espURL}/record`, { method: "POST" });
     if (res.ok) {
-      espStatus.textContent = "ESP: ✅ recording triggered";
-      espStatus.className = "ok";
+      updateEspStatus("recording triggered", true);
     } else {
-      espStatus.textContent = "ESP: ❌ trigger failed";
-      espStatus.className = "error";
+      updateEspStatus("trigger failed");
     }
   } catch (err) {
-    espStatus.textContent = "ESP: ❌ not reachable";
-    espStatus.className = "error";
+    updateEspStatus("not reachable");
   }
 });
 
-// Show translated messages from backend
-function addMessage(msg) {
-  const div = document.createElement("div");
-  div.className = "message";
-  div.innerHTML = `
-    <p><strong>Original:</strong> ${msg.original || "(empty)"}</p>
-    <p><strong>Translated (${msg.targetLanguage}):</strong> ${msg.translated || "(empty)"}</p>
-    <hr/>
-  `;
-  messagesEl.prepend(div);
-}
-
-// Stream updates from backend
-function startStream() {
-  const evtSource = new EventSource(`${backendURL}/api/stream`);
-  evtSource.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data);
-      addMessage(msg);
-    } catch (e) {
-      console.error("Bad SSE message", e);
-    }
-  };
-  evtSource.onerror = () => {
-    console.error("SSE connection lost, retrying...");
-    setTimeout(startStream, 3000);
-  };
-}
-
-// Init
+// ========== Init ==========
 checkBackend();
-loadLanguage();
-startStream();
+if (espURL) espInput.value = espURL;
+if (!isLocalFrontend) {
+  updateEspStatus("⚠️ Only works from local network", false);
+}
