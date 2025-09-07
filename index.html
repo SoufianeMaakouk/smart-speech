@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ESP8266 Speech Translator</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .container { max-width: 600px; margin: auto; }
+    .controls { margin-bottom: 15px; }
+    input { padding: 5px; width: 70%; }
+    button { padding: 5px 10px; margin-left: 5px; }
+    .ok { color: green; }
+    .error { color: red; }
+    .messages { margin-top: 20px; border: 1px solid #ccc; padding: 10px; min-height: 100px; }
+  </style>
 </head>
 <body>
   <div class="container">
@@ -24,7 +34,7 @@
     <div class="controls">
       <label>
         ESP IP (local or public, e.g., ngrok):
-        <input id="espInput" placeholder="http://192.168.xxx.xxx" value="https://683cb212d03c.ngrok-free.app" />
+        <input id="espInput" placeholder="http://192.168.xxx.xxx" value="" />
       </label>
       <button id="saveEsp">Save ESP</button>
       <span id="espStatus"></span>
@@ -32,7 +42,7 @@
 
     <div class="guide">
       <p>
-        Use the button on your ESP8266 (or the trigger below) to record and upload audio.
+        Use the button on your ESP8266 (or the trigger below) to record and upload audio. Transcribed and translated text will appear below.
       </p>
     </div>
 
