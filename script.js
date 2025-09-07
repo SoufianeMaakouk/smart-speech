@@ -1,12 +1,14 @@
-const backendURL = "https://speech-project-backend.onrender.com"; // your backend
+const backendURL = "https://speech-project-backend.onrender.com";
 let espURL = localStorage.getItem("espURL") || "";
 const backendStatus = document.getElementById("status");
 const espStatus = document.getElementById("espStatus");
 const espInput = document.getElementById("espInput");
 const saveEspBtn = document.getElementById("saveEsp");
 const triggerBtn = document.getElementById("triggerRecord");
+const langInput = document.getElementById("lang");
+const saveLangBtn = document.getElementById("saveLang");
 
-// Detect if frontend is running locally or on GitHub Pages
+// Detect if frontend is local
 const isLocalFrontend =
   location.hostname === "localhost" ||
   location.hostname.startsWith("192.168.") ||
@@ -49,13 +51,15 @@ triggerBtn.addEventListener("click", async () => {
     return;
   }
 
-  // Allow ngrok/public URLs even if not local
-const isPublicESP = espURL.startsWith("http://") || espURL.startsWith("https://");
+  // Allow public URLs (ngrok) even if frontend is not local
+  const isPublicESP = espURL.startsWith("http://") || espURL.startsWith("https://");
 
-if (!isLocalFrontend && !isPublicESP) {
-  updateEspStatus("ESP unreachable from GitHub Pages. Please run locally or use a public URL.");
-  return;
-}
+  if (!isLocalFrontend && !isPublicESP) {
+    updateEspStatus(
+      "unreachable from GitHub Pages. Please run locally or use a public URL."
+    );
+    return;
+  }
 
   try {
     const res = await fetch(`${espURL}/record`, { method: "POST" });
@@ -69,9 +73,34 @@ if (!isLocalFrontend && !isPublicESP) {
   }
 });
 
+// ========== Language Handling ==========
+saveLangBtn.addEventListener("click", async () => {
+  const lang = langInput.value.trim();
+  if (!lang) return;
+
+  try {
+    const res = await fetch(`${backendURL}/api/set-language`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lang }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      backendStatus.textContent = `Saved! Target language is now: ${data.targetLanguage}`;
+      backendStatus.className = "ok";
+    } else {
+      backendStatus.textContent = `Failed to save language: ${res.status}`;
+      backendStatus.className = "error";
+    }
+  } catch (err) {
+    backendStatus.textContent = `Failed to save language: ${err.message}`;
+    backendStatus.className = "error";
+  }
+});
+
 // ========== Init ==========
 checkBackend();
 if (espURL) espInput.value = espURL;
-if (!isLocalFrontend) {
+if (!isLocalFrontend && !espURL.startsWith("http")) {
   updateEspStatus("⚠️ Only works from local network", false);
 }
