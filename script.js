@@ -1,40 +1,78 @@
-const BACKEND_BASE = 'https://speech-project-backend.onrender.com';
-const AUTH_TOKEN = null; // optional
+const backendURL = "https://speech-project-backend.onrender.com"; // your Render backend
 
-function authHeaders() { return AUTH_TOKEN ? { 'Authorization': `Bearer ${AUTH_TOKEN}` } : {}; }
+const langInput = document.getElementById("lang");
+const saveBtn = document.getElementById("saveLang");
+const statusEl = document.getElementById("status");
+const messagesEl = document.getElementById("messages");
 
+// Load current language from backend
 async function loadLanguage() {
-  const r = await fetch(`${BACKEND_BASE}/api/get-language`);
-  const j = await r.json();
-  document.getElementById('lang').value = j.targetLanguage || '';
+  try {
+    const res = await fetch(`${backendURL}/api/get-language`);
+    const data = await res.json();
+    langInput.value = data.targetLanguage || "";
+    statusEl.textContent = `Current target language: ${data.targetLanguage}`;
+    statusEl.style.color = "green";
+  } catch (err) {
+    statusEl.textContent = "Error loading current language";
+    statusEl.style.color = "red";
+  }
 }
 
-async function saveLanguage() {
-  const lang = document.getElementById('lang').value.trim();
-  const r = await fetch(`${BACKEND_BASE}/api/set-language`, {
-    method:'POST', headers:{ 'Content-Type':'application/json', ...authHeaders() }, body: JSON.stringify({lang})
-  });
-  document.getElementById('status').textContent = r.ok ? 'Saved ✅' : 'Failed ❌';
-}
+// Save new language
+saveBtn.addEventListener("click", async () => {
+  const lang = langInput.value.trim();
+  if (!lang) {
+    statusEl.textContent = "Please enter a language code (e.g., de, fr, es)";
+    statusEl.style.color = "red";
+    return;
+  }
 
+  try {
+    const res = await fetch(`${backendURL}/api/set-language`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lang }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    statusEl.textContent = `Saved! Target language is now: ${data.targetLanguage}`;
+    statusEl.style.color = "green";
+  } catch (err) {
+    statusEl.textContent = `Failed to save language: ${err.message}`;
+    statusEl.style.color = "red";
+  }
+});
+
+// Show translated messages from backend
 function addMessage(msg) {
-  const wrap = document.getElementById('messages');
-  const card = document.createElement('div'); card.className='card';
-  const time = new Date(msg.ts||Date.now()).toLocaleString();
-  card.innerHTML = `
-    <div class="row"><div class="badge">Time</div><div class="time">${time}</div></div>
-    <div class="row"><div class="badge">Original</div><div>${(msg.original||'').replaceAll('\n','<br/>')}</div></div>
-    <div class="row"><div class="badge">Translated (${msg.targetLanguage})</div><div>${(msg.translated||'').replaceAll('\n','<br/>')}</div></div>
+  const div = document.createElement("div");
+  div.className = "message";
+  div.innerHTML = `
+    <p><strong>Original:</strong> ${msg.original || "(empty)"}</p>
+    <p><strong>Translated (${msg.targetLanguage}):</strong> ${msg.translated || "(empty)"}</p>
+    <hr/>
   `;
-  wrap.prepend(card);
+  messagesEl.prepend(div); // newest on top
 }
 
-function connectStream() {
-  const ev = new EventSource(`${BACKEND_BASE}/api/stream`);
-  ev.onmessage = (e)=>{ try { addMessage(JSON.parse(e.data)); } catch(_){} };
-  ev.onerror = ()=>{ document.getElementById('status').textContent='Stream disconnected, retrying…'; };
+function startStream() {
+  const evtSource = new EventSource(`${backendURL}/api/stream`);
+  evtSource.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      addMessage(msg);
+    } catch (e) {
+      console.error("Bad SSE message", e);
+    }
+  };
+  evtSource.onerror = () => {
+    console.error("SSE connection lost, retrying...");
+    setTimeout(startStream, 3000); // reconnect
+  };
 }
 
-document.getElementById('saveLang').addEventListener('click', saveLanguage);
+// Initialize
 loadLanguage();
-connectStream();
+startStream();
