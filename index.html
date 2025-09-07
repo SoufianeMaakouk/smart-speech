@@ -5,10 +5,61 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ESP8266 Speech Translator</title>
   <link rel="stylesheet" href="styles.css" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .controls {
+      margin-bottom: 15px;
+    }
+    #status, #backendStatus, #espStatus {
+      display: block;
+      margin-top: 8px;
+      font-size: 14px;
+    }
+    .messages {
+      background: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .message {
+      margin-bottom: 12px;
+      padding: 8px;
+      border-bottom: 1px solid #ddd;
+    }
+    .status-bar {
+      background: #eee;
+      padding: 10px;
+      margin-bottom: 20px;
+      border-radius: 6px;
+    }
+    .ok { color: green; }
+    .error { color: red; }
+  </style>
 </head>
 <body>
   <div class="container">
     <h1>ESP8266 Speech Translator</h1>
+
+    <!-- Debug / status bar -->
+    <div class="status-bar">
+      <span id="backendStatus">Backend: checking...</span><br/>
+      <span id="espStatus">ESP: not connected</span>
+    </div>
 
     <div class="controls">
       <label>
@@ -19,84 +70,17 @@
       <span id="status"></span>
     </div>
 
-    <div class="esp-control">
-      <label>ESP8266 IP (on your local network):</label>
-      <input id="espIP" placeholder="e.g., 192.168.1.100" />
-      <button id="recordBtn">Start Recording</button>
-      <span id="espStatus"></span>
-    </div>
-
     <div class="guide">
-      <p>Click "Start Recording" to trigger your ESP8266 to record and send audio. Transcribed and translated text will appear below.</p>
+      <p>
+        Use the button on your ESP8266 (or the trigger below) to record and upload audio.<br/>
+        Transcribed and translated text will appear below.
+      </p>
+      <button id="triggerRecord">🎤 Trigger Recording (via ESP)</button>
     </div>
 
     <div id="messages" class="messages"></div>
   </div>
 
-  <script>
-    const saveLangBtn = document.getElementById('saveLang');
-    const langInput = document.getElementById('lang');
-    const statusSpan = document.getElementById('status');
-
-    const recordBtn = document.getElementById('recordBtn');
-    const espIPInput = document.getElementById('espIP');
-    const espStatus = document.getElementById('espStatus');
-
-    const messagesDiv = document.getElementById('messages');
-
-    // --- Save target language ---
-    saveLangBtn.addEventListener('click', async () => {
-      const lang = langInput.value.trim();
-      if (!lang) return;
-      try {
-        const res = await fetch('https://YOUR-RENDER-APP.onrender.com/api/set-language', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ lang })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          statusSpan.textContent = `Saved ✅ (${data.targetLanguage})`;
-        } else {
-          statusSpan.textContent = 'Error saving language';
-        }
-      } catch (err) {
-        statusSpan.textContent = 'Network error';
-        console.error(err);
-      }
-    });
-
-    // --- Trigger ESP8266 recording ---
-    recordBtn.addEventListener('click', async () => {
-      const ip = espIPInput.value.trim();
-      if (!ip) {
-        espStatus.textContent = 'Enter ESP IP';
-        return;
-      }
-      espStatus.textContent = 'Recording...';
-      try {
-        const res = await fetch(`http://${ip}/record`);
-        const text = await res.text();
-        espStatus.textContent = 'Done ✅';
-        console.log('ESP response:', text);
-      } catch (err) {
-        espStatus.textContent = 'Error connecting to ESP';
-        console.error(err);
-      }
-    });
-
-    // --- Listen to backend SSE for messages ---
-    const evtSource = new EventSource('https://YOUR-RENDER-APP.onrender.com/api/stream');
-    evtSource.onmessage = (e) => {
-      try {
-        const msg = JSON.parse(e.data);
-        const div = document.createElement('div');
-        div.innerHTML = `<b>Original:</b> ${msg.original} <br><b>Translated (${msg.targetLanguage}):</b> ${msg.translated}`;
-        messagesDiv.prepend(div);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
